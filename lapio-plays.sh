@@ -4,18 +4,17 @@
 set -Eeuo pipefail
 
 echo "================================"
-echo "       LAPIO PLAYS"
+echo "          LAPIO PLAYS"
 echo "================================"
 
 SERVICE="${SERVICE:-gotty}"
 
 case "$SERVICE" in
-
     gotty)
         echo "[GoTTY] Starting..."
 
         if [ -z "${GOTTY_CREDENTIAL:-}" ]; then
-            echo "[ERROR] GOTTY_CREDENTIAL is not configured"
+            echo "[ERROR] GOTTY_CREDENTIAL is missing"
             exit 1
         fi
 
@@ -38,5 +37,4 @@ case "$SERVICE" in
         echo "[ERROR] Unknown service: $SERVICE"
         exit 1
         ;;
-
 esac
