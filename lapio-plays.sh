@@ -7,6 +7,7 @@ echo "          LAPIO PLAYS"
 echo "================================"
 
 SERVICE="${SERVICE:-gotty}"
+PORT="${PORT:-10000}"
 
 case "$SERVICE" in
     gotty)
@@ -16,13 +17,13 @@ case "$SERVICE" in
         GOTTY_PASSWORD="${GOTTY_PASSWORD:-}"
 
         if [ -z "$GOTTY_PASSWORD" ]; then
-            echo "[ERROR] Set GOTTY_PASSWORD"
+            echo "[ERROR] Set GOTTY_PASSWORD in Render Environment."
             exit 1
         fi
 
         exec /usr/local/bin/gotty \
             --address 0.0.0.0 \
-            --port "${PORT:-10000}" \
+            --port "$PORT" \
             --credential "${GOTTY_USER}:${GOTTY_PASSWORD}" \
             --permit-write \
             --reconnect \
@@ -37,21 +38,33 @@ case "$SERVICE" in
 
         echo "[HTTP] PID: $HEALTH_PID"
 
+        READY=0
+
         for i in {1..20}; do
-            if curl -fsS "http://127.0.0.1:${PORT:-10000}/health" >/dev/null; then
-                echo "[HTTP] Health server is ready"
+            if ! kill -0 "$HEALTH_PID" 2>/dev/null; then
+                echo "[ERROR] Health server process stopped."
+                exit 1
+            fi
+
+            if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
+                READY=1
                 break
             fi
+
             sleep 1
         done
 
-        if ! kill -0 "$HEALTH_PID" 2>/dev/null; then
-            echo "[ERROR] Health server stopped"
+        if [ "$READY" -ne 1 ]; then
+            echo "[ERROR] Health server did not become ready."
             exit 1
         fi
 
+        echo "[HTTP] Health server is ready"
         echo "[SSHX] Starting..."
-        exec /usr/local/bin/sshx --enable-readers
+
+        exec /usr/local/bin/sshx \
+            --enable-readers \
+            --shell /bin/bash
         ;;
 
     *)
