@@ -1,14 +1,10 @@
 
 FROM ubuntu:22.04
 
-LABEL maintainer="Lapio Plays"
-
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-ENV GOTTY_TAG_VER=v1.0.1
-
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV LC_ALL=en_US.UTF-8
+ENV PORT=10000
 
 # Dependencies
 RUN apt-get update && \
@@ -27,14 +23,12 @@ RUN apt-get update && \
 
 # Install GoTTY
 RUN set -eux; \
-    curl -fSL \
-      "https://github.com/yudai/gotty/releases/download/${GOTTY_TAG_VER}/gotty_linux_amd64.tar.gz" \
-      -o /tmp/gotty.tar.gz; \
     mkdir -p /tmp/gotty; \
+    curl -fsSL \
+        https://github.com/yudai/gotty/releases/download/v1.0.1/gotty_linux_amd64.tar.gz \
+        -o /tmp/gotty.tar.gz; \
     tar -xzf /tmp/gotty.tar.gz -C /tmp/gotty; \
-    GOTTY_BIN="$(find /tmp/gotty -type f -name gotty -print -quit)"; \
-    test -n "$GOTTY_BIN"; \
-    install -m 755 "$GOTTY_BIN" /usr/local/bin/gotty; \
+    install -m 755 /tmp/gotty/gotty /usr/local/bin/gotty; \
     /usr/local/bin/gotty --version; \
     rm -rf /tmp/gotty /tmp/gotty.tar.gz
 
@@ -46,16 +40,18 @@ RUN set -eux; \
     /usr/local/bin/sshx --help || true; \
     rm -f /tmp/sshx-install.sh
 
-# Create user
+# Create terminal user
 RUN useradd -m -s /bin/bash terminal
 
-# Startup script
+# Copy application files
 COPY lapio-plays.sh /lapio-plays.sh
+COPY health_server.py /health_server.py
 
-RUN chmod 755 /lapio-plays.sh
+# Permissions
+RUN chmod 755 /lapio-plays.sh /health_server.py
 
 WORKDIR /home/terminal
 
-EXPOSE 8080
+EXPOSE 10000
 
-ENTRYPOINT ["/bin/bash", "/lapio-plays.sh"]
+ENTRYPOINT ["/lapio-plays.sh"]
