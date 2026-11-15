@@ -1,10 +1,8 @@
 
 services:
-
   my-gotty:
     hostname: mygotty
     container_name: my-gotty
-
     image: lapio-plays:latest
 
     build:
@@ -26,7 +24,6 @@ services:
   my-sshx:
     hostname: mysshx
     container_name: my-sshx
-
     image: lapio-plays:latest
 
     restart: unless-stopped
