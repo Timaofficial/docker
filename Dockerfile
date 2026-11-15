@@ -1,29 +1,40 @@
+
 FROM ubuntu:22.04
+
 LABEL maintainer="Lapio Plays"
 
+ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
 ENV GOTTY_TAG_VER=v1.0.1
-ENV SSHX_FILE=sshx-x86_64-unknown-linux-musl.tar.gz
-ENV CF_PATH=cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
 
-RUN apt-get -y update && \
-    apt-get install -y curl ca-certificates && \
-    curl -sLk https://github.com/yudai/gotty/releases/download/${GOTTY_TAG_VER}/gotty_linux_amd64.tar.gz \
-    | tar xzC /usr/local/bin && \
-    curl -sSfL https://amazonaws.com{SSHX_FILE} \
-    | tar -xz -C /usr/local/bin && \
-    curl -sSfL https://github.com{CF_PATH} \
-    -o /usr/local/bin/cloudflared && \
-    chmod +x /usr/local/bin/gotty /usr/local/bin/sshx /usr/local/bin/cloudflared && \
-    apt-get purge --auto-remove -y curl && \
-    apt-get clean && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        bash \
+        tar \
+        passwd \
+        locales && \
+    locale-gen en_US.UTF-8 && \
+    curl -fsSL \
+        "https://github.com/yudai/gotty/releases/download/${GOTTY_TAG_VER}/gotty_linux_amd64.tar.gz" \
+        -o /tmp/gotty.tar.gz && \
+    tar -xzf /tmp/gotty.tar.gz -C /usr/local/bin && \
+    curl -fsSL https://sshx.io/get | sh && \
+    install -m 755 /root/.local/bin/sshx /usr/local/bin/sshx && \
+    rm -f /tmp/gotty.tar.gz && \
+    apt-get purge -y curl && \
+    apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
-COPY /lapio-plays.sh /lapio-plays.sh
+RUN useradd -m -s /bin/bash terminal
 
-RUN chmod 744 /lapio-plays.sh
+COPY lapio-plays.sh /lapio-plays.sh
+
+RUN chmod 755 /lapio-plays.sh
+
+WORKDIR /home/terminal
 
 EXPOSE 8080
 
-CMD ["/bin/bash", "/lapio-plays.sh"]
+ENTRYPOINT ["/bin/bash", "/lapio-plays.sh"]
