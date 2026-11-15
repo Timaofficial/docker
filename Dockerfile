@@ -21,7 +21,7 @@ RUN apt-get update && \
         locales \
         findutils \
         procps && \
-        python \
+        python3 \
     locale-gen en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
