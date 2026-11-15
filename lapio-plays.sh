@@ -1,14 +1,23 @@
+
 #!/bin/bash
+
 set -Eeuo pipefail
 
-case "${SERVICE:-gotty}" in
+echo "================================"
+echo "       LAPIO PLAYS"
+echo "================================"
+
+SERVICE="${SERVICE:-gotty}"
+
+case "$SERVICE" in
+
     gotty)
+        echo "[GoTTY] Starting..."
+
         if [ -z "${GOTTY_CREDENTIAL:-}" ]; then
-            echo "[ERROR] GOTTY_CREDENTIAL is required"
+            echo "[ERROR] GOTTY_CREDENTIAL is not configured"
             exit 1
         fi
-
-        echo "[GoTTY] Starting web terminal..."
 
         exec /usr/local/bin/gotty \
             --address 0.0.0.0 \
@@ -20,13 +29,14 @@ case "${SERVICE:-gotty}" in
         ;;
 
     sshx)
-        echo "[SSHX] Starting SSHX..."
+        echo "[SSHX] Starting..."
 
         exec /usr/local/bin/sshx
         ;;
 
     *)
-        echo "[ERROR] Unknown SERVICE: ${SERVICE}"
+        echo "[ERROR] Unknown service: $SERVICE"
         exit 1
         ;;
+
 esac
