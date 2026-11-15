@@ -41,17 +41,11 @@ RUN set -eux; \
 RUN set -eux; \
     curl -fsSL https://sshx.io/get -o /tmp/sshx-install.sh; \
     bash /tmp/sshx-install.sh; \
-    SSHX_BIN="$(find /root/.local /root/.cargo /usr/local/bin -type f -name sshx -print -quit 2>/dev/null || true)"; \
-    if [ -z "$SSHX_BIN" ]; then \
-        echo "ERROR: SSHX binary was not found after installation."; \
-        echo "Installer output and installation paths need inspection."; \
-        exit 1; \
-    fi; \
-    install -m 755 "$SSHX_BIN" /usr/local/bin/sshx; \
     test -x /usr/local/bin/sshx; \
+    /usr/local/bin/sshx --help || true; \
     rm -f /tmp/sshx-install.sh
 
-# Create non-root user
+# Create user
 RUN useradd -m -s /bin/bash terminal
 
 # Startup script
