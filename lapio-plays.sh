@@ -1,74 +1,144 @@
 
-#!/bin/bash
+#!/usr/bin/env bash
+
 set -Eeuo pipefail
 
-echo "================================"
-echo "          LAPIO PLAYS"
-echo "================================"
+# ==========================================
+# LAPIO PLAYS
+# Docker Terminal Launcher
+# GoTTY + SSHX + HTTP Health Server
+# ==========================================
 
 SERVICE="${SERVICE:-gotty}"
 PORT="${PORT:-10000}"
 
-case "$SERVICE" in
-    gotty)
-        echo "[GoTTY] Starting..."
+HEALTH_SERVER="/health_server.py"
+GOTTY_BIN="/usr/local/bin/gotty"
+SSHX_BIN="/usr/local/bin/sshx"
 
-        GOTTY_USER="${GOTTY_USER:-admin}"
-        GOTTY_PASSWORD="${GOTTY_PASSWORD:-}"
+HEALTH_PID=""
 
-        if [ -z "$GOTTY_PASSWORD" ]; then
-            echo "[ERROR] Set GOTTY_PASSWORD in Render Environment."
-            exit 1
-        fi
+log() {
+    echo "[LAPIO] $*"
+}
 
-        exec /usr/local/bin/gotty \
-            --address 0.0.0.0 \
-            --port "$PORT" \
-            --credential "${GOTTY_USER}:${GOTTY_PASSWORD}" \
-            --permit-write \
-            --reconnect \
-            /bin/bash
-        ;;
+error() {
+    echo "[ERROR] $*" >&2
+}
 
-    sshx)
-        echo "[HTTP] Starting health server..."
+cleanup() {
+    if [[ -n "${HEALTH_PID}" ]]; then
+        log "Stopping health server..."
+        kill "${HEALTH_PID}" 2>/dev/null || true
+        wait "${HEALTH_PID}" 2>/dev/null || true
+    fi
+}
 
-        python3 -u /health_server.py &
-        HEALTH_PID=$!
+trap cleanup EXIT INT TERM
 
-        echo "[HTTP] PID: $HEALTH_PID"
-
-        READY=0
-
-        for i in {1..20}; do
-            if ! kill -0 "$HEALTH_PID" 2>/dev/null; then
-                echo "[ERROR] Health server process stopped."
-                exit 1
-            fi
-
-            if curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
-                READY=1
-                break
-            fi
-
-            sleep 1
-        done
-
-        if [ "$READY" -ne 1 ]; then
-            echo "[ERROR] Health server did not become ready."
-            exit 1
-        fi
-
-        echo "[HTTP] Health server is ready"
-        echo "[SSHX] Starting..."
-
-        exec /usr/local/bin/sshx \
-            --enable-readers \
-            --shell /bin/bash
-        ;;
-
-    *)
-        echo "[ERROR] Unknown SERVICE: $SERVICE"
+check_binary() {
+    if [[ ! -x "$1" ]]; then
+        error "Executable not found: $1"
         exit 1
-        ;;
-esac
+    fi
+}
+
+start_health_server() {
+    log "Starting HTTP health server..."
+
+    if [[ ! -f "$HEALTH_SERVER" ]]; then
+        error "Missing file: $HEALTH_SERVER"
+        exit 1
+    fi
+
+    python3 -u "$HEALTH_SERVER" &
+    HEALTH_PID=$!
+
+    log "Health server PID: $HEALTH_PID"
+
+    for attempt in {1..30}; do
+        if ! kill -0 "$HEALTH_PID" 2>/dev/null; then
+            error "Health server process stopped."
+            wait "$HEALTH_PID" || true
+            exit 1
+        fi
+
+        if curl -fsS \
+            "http://127.0.0.1:${PORT}/health" \
+            >/dev/null 2>&1; then
+
+            log "Health server is ready on port ${PORT}"
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    error "Health server did not become ready."
+    exit 1
+}
+
+start_gotty() {
+    log "Starting GoTTY..."
+
+    check_binary "$GOTTY_BIN"
+
+    local username="${GOTTY_USER:-admin}"
+    local password="${GOTTY_PASSWORD:-}"
+
+    if [[ -z "$password" ]]; then
+        error "GOTTY_PASSWORD is not configured."
+        exit 1
+    fi
+
+    exec "$GOTTY_BIN" \
+        --address 0.0.0.0 \
+        --port "$PORT" \
+        --credential "${username}:${password}" \
+        --permit-write \
+        --reconnect \
+        /bin/bash
+}
+
+start_sshx() {
+    log "Starting SSHX mode..."
+
+    check_binary "$SSHX_BIN"
+
+    start_health_server
+
+    log "Starting SSHX terminal..."
+
+    exec "$SSHX_BIN" \
+        --enable-readers \
+        --shell /bin/bash
+}
+
+main() {
+    echo
+    echo "================================"
+    echo "          LAPIO PLAYS"
+    echo "================================"
+    echo
+
+    log "Service: ${SERVICE}"
+    log "Port: ${PORT}"
+
+    case "$SERVICE" in
+        gotty)
+            start_gotty
+            ;;
+
+        sshx)
+            start_sshx
+            ;;
+
+        *)
+            error "Unknown SERVICE: ${SERVICE}"
+            error "Available services: gotty, sshx"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
