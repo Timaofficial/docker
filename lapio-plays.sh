@@ -1,13 +1,32 @@
 #!/bin/bash
+set -Eeuo pipefail
 
-# Скачиваем и распаковываем sshx напрямую в /usr/local/bin, если его там еще нет
-if [ ! -f /usr/local/bin/sshx ]; then
-    curl -sSfL https://amazonaws.com | tar -xz -C /usr/local/bin
-    chmod +x /usr/local/bin/sshx
-fi
+case "${SERVICE:-gotty}" in
+    gotty)
+        if [ -z "${GOTTY_CREDENTIAL:-}" ]; then
+            echo "[ERROR] GOTTY_CREDENTIAL is required"
+            exit 1
+        fi
 
-# Запускаем sshx в фоне с автоперезапуском и выводом ссылки в логи
-(while true; do /usr/local/bin/sshx; sleep 5; done) &
+        echo "[GoTTY] Starting web terminal..."
 
-# Запускаем GoTTY на основном порту для удержания веб-сервера и пингов
-/usr/local/bin/gotty --permit-write --reconnect /bin/bash
+        exec /usr/local/bin/gotty \
+            --address 0.0.0.0 \
+            --port 8080 \
+            --credential "$GOTTY_CREDENTIAL" \
+            --permit-write \
+            --reconnect \
+            /bin/bash
+        ;;
+
+    sshx)
+        echo "[SSHX] Starting SSHX..."
+
+        exec /usr/local/bin/sshx
+        ;;
+
+    *)
+        echo "[ERROR] Unknown SERVICE: ${SERVICE}"
+        exit 1
+        ;;
+esac
