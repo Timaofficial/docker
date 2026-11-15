@@ -1,27 +1,38 @@
 
 services:
+
   my-gotty:
     hostname: mygotty
     container_name: my-gotty
+
     image: lapio-plays:latest
+
     build:
       context: .
       dockerfile: Dockerfile
+
     restart: unless-stopped
+
     environment:
       SERVICE: gotty
       GOTTY_CREDENTIAL: "${GOTTY_USER}:${GOTTY_PASSWORD}"
+
     ports:
       - "127.0.0.1:8989:8080"
+
     tty: true
     stdin_open: true
 
   my-sshx:
     hostname: mysshx
     container_name: my-sshx
+
     image: lapio-plays:latest
+
     restart: unless-stopped
+
     environment:
       SERVICE: sshx
+
     tty: true
     stdin_open: true
