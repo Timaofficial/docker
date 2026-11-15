@@ -1,6 +1,5 @@
 
 #!/bin/bash
-
 set -Eeuo pipefail
 
 echo "================================"
@@ -13,15 +12,18 @@ case "$SERVICE" in
     gotty)
         echo "[GoTTY] Starting..."
 
-        if [ -z "${GOTTY_CREDENTIAL:-}" ]; then
-            echo "[ERROR] GOTTY_CREDENTIAL is missing"
+        GOTTY_USER="${GOTTY_USER:-admin}"
+        GOTTY_PASSWORD="${GOTTY_PASSWORD:-}"
+
+        if [ -z "$GOTTY_PASSWORD" ]; then
+            echo "[ERROR] Set GOTTY_PASSWORD in Render Environment."
             exit 1
         fi
 
         exec /usr/local/bin/gotty \
             --address 0.0.0.0 \
-            --port 8080 \
-            --credential "$GOTTY_CREDENTIAL" \
+            --port "${PORT:-8080}" \
+            --credential "${GOTTY_USER}:${GOTTY_PASSWORD}" \
             --permit-write \
             --reconnect \
             /bin/bash
@@ -29,12 +31,11 @@ case "$SERVICE" in
 
     sshx)
         echo "[SSHX] Starting..."
-
-        exec /usr/local/bin/sshx
+        exec /usr/local/bin/sshx --enable-readers
         ;;
 
     *)
-        echo "[ERROR] Unknown service: $SERVICE"
+        echo "[ERROR] Unknown SERVICE: $SERVICE"
         exit 1
         ;;
 esac
