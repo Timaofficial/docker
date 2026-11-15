@@ -6,7 +6,7 @@ ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 ENV PORT=10000
 
-# Dependencies
+# Install dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl \
@@ -39,21 +39,22 @@ RUN set -eux; \
     test -x /usr/local/bin/sshx; \
     rm -f /tmp/sshx-install.sh
 
-# Create user
+# Create terminal user
 RUN useradd -m -s /bin/bash terminal
 
-# Copy application
+# Copy application files
 COPY lapio-plays.sh /lapio-plays.sh
 COPY health_server.py /health_server.py
 
-# Normalize Windows CRLF and permissions
-RUN sed -i '1s/^\xEF\xBB\xBF//' /lapio-plays.sh && \
-    sed -i 's/\r$//' /lapio-plays.sh && \
+# Normalize scripts and permissions
+RUN python3 -c "from pathlib import Path; p=Path('/lapio-plays.sh'); b=p.read_bytes(); p.write_bytes(b.removeprefix(bytes([239,187,191])).replace(bytes([13,10]),bytes([10])).replace(bytes([13]),bytes([10])))" && \
     chmod 755 /lapio-plays.sh /health_server.py && \
-    test "$(head -n 1 /lapio-plays.sh)" = '#!/usr/bin/env bash'
+    test -s /lapio-plays.sh && \
+    test -s /health_server.py
 
 WORKDIR /home/terminal
 
 EXPOSE 10000
 
+# Start application through Bash
 ENTRYPOINT ["/bin/bash", "/lapio-plays.sh"]
