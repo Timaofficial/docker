@@ -20,8 +20,8 @@ RUN apt-get update && \
         gzip \
         locales \
         findutils \
-        procps && \
-        python3 \
+        procps \
+        python3 && \
     locale-gen en_US.UTF-8 && \
     rm -rf /var/lib/apt/lists/*
 
